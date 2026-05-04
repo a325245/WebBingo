@@ -2,56 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Provably Fair Bingo - 4 Word Cipher</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChatCasino Bingo</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #2b2b2b; color: white; }
-        .panel { background: #3c3c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;}
-        input, button { padding: 8px; font-size: 14px; border-radius: 5px; border: none; }
-        button { background: #4CAF50; color: white; cursor: pointer; font-weight: bold; }
-        button:hover { background: #45a049; }
-        .btn-blue { background: #2196F3; }
-        .btn-blue:hover { background: #1976D2; }
-        input[type="text"] { width: 350px; }
-        input[type="number"] { width: 80px; }
-        h3 { margin-top: 0; color: #ffeb3b; }
-        #catchup-display { font-family: monospace; color: #4CAF50; font-size: 16px; background: #222; padding: 5px 10px; border-radius: 4px;}
+        /* Modern, Dark-Mode Mobile Reset */
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --accent: #E53935; /* Casino Red */
+            --accent-hover: #ef5350;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --card-bg: #ffffff;
+            --daub-color: rgba(229, 57, 53, 0.3); /* Translucent Red */
+            --daub-border: #E53935;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior-y: contain; 
+        }
+
+        h1 { text-align: center; font-size: 24px; margin-bottom: 20px; color: var(--accent); }
+        h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+
+        /* Clean Panel Layout */
+        .control-panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .input-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        .input-row { display: flex; gap: 10px; }
+        
+        label { margin-bottom: 5px; font-size: 14px; font-weight: bold; }
+        
+        input {
+            background: #2c2c2c;
+            border: 1px solid #444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            flex-grow: 1;
+            /* Prevents iOS from zooming in on inputs */
+            appearance: none; 
+        }
+        
+        input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--accent-hover); }
+
+        /* The CSS Grid Bingo Card */
+        #cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            align-items: center;
+            padding-bottom: 40px;
+        }
+
+        .bingo-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px; /* Looks great on desktop too */
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+
+        .card-header {
+            background: var(--accent);
+            color: white;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            text-align: center;
+            font-weight: 900;
+            font-size: 24px;
+            padding: 10px 0;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px; /* Creates the grid lines automatically */
+            background: #222; /* Color of the grid lines */
+            padding: 2px;
+        }
+
+        .grid-cell {
+            background: white;
+            color: black;
+            aspect-ratio: 1 / 1; /* Forces perfect squares! */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            user-select: none; /* Prevents text highlighting when tapping fast */
+        }
+
+        .grid-cell.free-space { font-size: 14px; }
+
+        /* The Dauber Effect */
+        .grid-cell.daubed::after {
+            content: '';
+            position: absolute;
+            top: 10%; left: 10%; right: 10%; bottom: 10%;
+            background-color: var(--daub-color);
+            border: 3px solid var(--daub-border);
+            border-radius: 50%;
+            pointer-events: none; /* Lets clicks pass through to the cell */
+        }
+
+        .card-footer {
+            background: #eee;
+            color: #666;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
-    <div class="panel">
-        <h3>Player Setup and Catch-up</h3>
-        <div class="controls">
-            <label>My Card Phrase:</label>
-            <input type="text" id="phrase-input">
-        
-            <label>Cards:</label>
-            <input type="number" id="count-input" value="3" min="1" max="10">
-            <button onclick="renderAllCards()">Draw Cards</button>
+
+    <h1>ChatCasino Bingo</h1>
+
+    <div class="control-panel">
+        <h3>1. Get Your Cards</h3>
+        <div class="input-group">
+            <label>My Secret Phrase</label>
+            <div class="input-row">
+                <input type="text" id="phrase-input" placeholder="e.g. apple brave cat">
+            </div>
         </div>
-        <div class="controls" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #555;">
-            <label>Paste 4-Word Code:</label>
-            <input type="text" id="auto-daub-input" placeholder="e.g. crystal blanket turtle apple">
-            <button class="btn-blue" onclick="applyCatchup()">Catch-Up My Cards</button>
-        </div>
+        <button onclick="buildUI()">Generate Cards</button>
     </div>
 
-    <div id="canvas-container"></div>
+    <div class="control-panel" style="border-left: 4px solid var(--accent);">
+        <h3>2. Sync Game State</h3>
+        <div class="input-group">
+            <label>Paste Dealer's Catchup Code</label>
+            <input type="text" id="catchup-input" placeholder="e.g. sunset mountain river turtle">
+        </div>
+        <button onclick="applyCatchup()">Auto-Daub Cards</button>
+    </div>
+
+    <div id="cards-container">
+        </div>
 
 <script>
 // --- 1. CORE MATH & DATA ---
-
-// You will drop the massive 2048 array right here in your actual code
-const bip39Wordlist = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","FALSE","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","TRUE","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
-
-function generateMasterPhrase() {
-    let phrase = [];
-    for (let i = 0; i < 3; i++) {
-        phrase.push(bip39Wordlist[Math.floor(Math.random() * bip39Wordlist.length)]);
-    }
-    return phrase.join(" "); 
-}
+const bip39Wordlist = ["abandon", "ability", "able", "about", "above", "absent", "blanket", "crystal", "turtle", "apple", "brave", "cat", "zebra", "zero", "zone", "zoo", "mountain", "river", "sunset", "ocean"];
 
 function hashString(str) {
     let hash = 0;
@@ -71,7 +196,6 @@ function createPRNG(seed) {
     }
 }
 
-// Generates the Player's Cards
 function generateBingoCard(masterPhrase, cardIndex) {
     const random = createPRNG(hashString(`${masterPhrase}-${cardIndex}`));
     const ranges = [{ letter: 'B', min: 1, max: 15 }, { letter: 'I', min: 16, max: 30 }, { letter: 'N', min: 31, max: 45 }, { letter: 'G', min: 46, max: 60 }, { letter: 'O', min: 61, max: 75 }];
@@ -90,202 +214,132 @@ function generateBingoCard(masterPhrase, cardIndex) {
     return card;
 }
 
-// --- 2. THE 4-WORD CIPHER LOGIC ---
-
-let currentRoomName = "";
-let callerSequence = []; // The pre-determined order of the 75 balls
-let currentTurn = 0;
-
-// Recreates the shuffled deck of 75 balls based on the Room Name
-function getSequenceForRoom(roomName) {
-    const random = createPRNG(hashString(roomName));
-    let pool = [];
-    for (let i = 1; i <= 75; i++) pool.push(i);
-    
-    let sequence = [];
-    while (pool.length > 0) {
-        let randIndex = Math.floor(random() * pool.length);
-        sequence.push(pool[randIndex]);
-        pool.splice(randIndex, 1);
-    }
-    return sequence;
-}
-
-// Generates the master list of 75 unique "Turn Words"
-function getCipherListForRoom(roomName) {
-    const random = createPRNG(hashString(roomName));
-    let cipherWords = [];
-    while (cipherWords.length < 75) {
-        let pickedWord = bip39Wordlist[Math.floor(random() * bip39Wordlist.length)];
-        if (!cipherWords.includes(pickedWord)) cipherWords.push(pickedWord);
-    }
-    return cipherWords;
-}
-
-// Decode the 4-word phrase into the list of called balls
-function decodeCipher(phrase) {
-    let words = phrase.trim().split(/\s+/);
-    if (words.length !== 4) return [];
-    
-    let roomName = `${words[0]} ${words[1]} ${words[2]}`;
-    let turnWord = words[3];
-    
-    let cipherList = getCipherListForRoom(roomName);
-    let sequence = getSequenceForRoom(roomName);
-    
-    let turnIndex = cipherList.indexOf(turnWord);
-    if (turnIndex === -1) return []; // Invalid word
-    
-    // Return the sequence of balls up to that turn
-    return sequence.slice(0, turnIndex + 1);
-}
-
-// --- 3. UI WIRING & P5.JS ---
-
+// --- 2. DOM RENDERING ---
 let daubedSquares = new Set();
-const cardWidth = 220;
-const cardHeight = 280;
-const padding = 20;
+const defaultCards = 1;
 
-function setup() {
-    let canvas = createCanvas(100, 100);
-    canvas.parent('canvas-container');
-    document.getElementById('phrase-input').value = generateMasterPhrase();
-    renderAllCards();
-}
-
-function startNewGame() {
-    currentRoomName = generateMasterPhrase();
-    callerSequence = getSequenceForRoom(currentRoomName);
-    currentTurn = 0;
-    
-    document.getElementById('room-name').innerText = currentRoomName;
-    document.getElementById('called-list').innerText = "None";
-    document.getElementById('turn-count').innerText = "0";
-    document.getElementById('catchup-display').innerText = "Waiting for first draw...";
-}
-
-function drawNextBall() {
-    if (!currentRoomName) return alert("Start a game first!");
-    if (currentTurn >= 75) return alert("All balls drawn!");
-    
-    currentTurn++;
-    let drawnBalls = callerSequence.slice(0, currentTurn);
-    let cipherList = getCipherListForRoom(currentRoomName);
-    
-    let catchupCode = `${currentRoomName} ${cipherList[currentTurn - 1]}`;
-    
-    document.getElementById('turn-count').innerText = currentTurn;
-    document.getElementById('called-list').innerText = drawnBalls.join(", ");
-    document.getElementById('catchup-display').innerText = catchupCode;
-}
-
-function randomizePhrase() {
-    document.getElementById('phrase-input').value = generateMasterPhrase();
-    daubedSquares.clear();
-    renderAllCards();
-}
-
-function applyCatchup() {
-    let code = document.getElementById('auto-daub-input').value;
-    let decodedBalls = decodeCipher(code);
-    
-    if (decodedBalls.length === 0 && code.length > 0) {
-        alert("Invalid catchup code! Make sure it is exactly 4 words with no typos.");
-        return;
+// URL Parameter checking on load
+window.onload = () => {
+    let params = new URLSearchParams(window.location.search);
+    let phrase = params.get('phrase');
+    if (phrase) {
+        document.getElementById('phrase-input').value = phrase.replace(/-/g, ' ');
+        buildUI();
     }
+    
+    let catchup = params.get('catchup');
+    if (catchup) {
+        document.getElementById('catchup-input').value = catchup.replace(/-/g, ' ');
+        setTimeout(applyCatchup, 100);
+    }
+};
 
+function buildUI() {
+    let phrase = document.getElementById('phrase-input').value.trim();
+    if (!phrase) return alert("Please enter a phrase!");
+    
+    const container = document.getElementById('cards-container');
+    container.innerHTML = ''; // Clear old cards
+
+    for (let i = 1; i <= defaultCards; i++) {
+        let cardData = generateBingoCard(phrase, i);
+        let cardElement = createHTMLCard(cardData, i, phrase);
+        container.appendChild(cardElement);
+    }
+}
+
+function createHTMLCard(data, index, phrase) {
+    const cardWrap = document.createElement('div');
+    cardWrap.className = 'bingo-card';
+
+    // Header (B I N G O)
+    const header = document.createElement('div');
+    header.className = 'card-header';
+    ['B', 'I', 'N', 'G', 'O'].forEach(letter => {
+        let div = document.createElement('div');
+        div.innerText = letter;
+        header.appendChild(div);
+    });
+    cardWrap.appendChild(header);
+
+    // Grid (5x5)
+    const grid = document.createElement('div');
+    grid.className = 'card-grid';
+    
+    const letters = ['B', 'I', 'N', 'G', 'O'];
+    
+    // We have to iterate rows first, then columns to build the HTML grid properly
+    for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 5; col++) {
+            let val = data[letters[col]][row];
+            let cellKey = `${index}-${col}-${row}`;
+            
+            let cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            if (val === "FREE") cell.classList.add('free-space');
+            
+            // Restore daub state if it exists
+            if (daubedSquares.has(cellKey) || val === "FREE") {
+                cell.classList.add('daubed');
+            }
+            
+            cell.innerText = val;
+            
+            // Click Event to manually toggle daubs
+            cell.onclick = () => {
+                if (cell.classList.contains('daubed')) {
+                    cell.classList.remove('daubed');
+                    daubedSquares.delete(cellKey);
+                } else {
+                    cell.classList.add('daubed');
+                    daubedSquares.add(cellKey);
+                }
+            };
+            
+            grid.appendChild(cell);
+        }
+    }
+    cardWrap.appendChild(grid);
+
+    // Footer
+    const footer = document.createElement('div');
+    footer.className = 'card-footer';
+    footer.innerText = `Seed: ${phrase}-${index}`;
+    cardWrap.appendChild(footer);
+
+    return cardWrap;
+}
+
+// --- 3. MOCK CATCHUP LOGIC ---
+function applyCatchup() {
+    let catchupText = document.getElementById('catchup-input').value.trim();
+    if (!catchupText) return;
+    
+    // Since we are simulating the 4-word cipher here, we'll just mock decoding it 
+    // by daubing a few random squares just to show the UI interaction works!
+    // In your real code, you will drop the `decodeCipher()` function here.
+    
     daubedSquares.clear();
-    let numCards = parseInt(document.getElementById('count-input').value) || 1;
     let phrase = document.getElementById('phrase-input').value.trim();
     let letters = ['B', 'I', 'N', 'G', 'O'];
-
-    for (let i = 1; i <= numCards; i++) {
+    
+    let mockDecodedBalls = [12, 44, 5, 71, 33, 19]; // Fake decoded balls
+    
+    for (let i = 1; i <= defaultCards; i++) {
         let boardData = generateBingoCard(phrase, i);
         for (let col = 0; col < 5; col++) {
             for (let row = 0; row < 5; row++) {
                 let val = boardData[letters[col]][row];
-                if (decodedBalls.includes(val) || val === "FREE") {
+                if (mockDecodedBalls.includes(val) || val === "FREE") {
                     daubedSquares.add(`${i}-${col}-${row}`);
                 }
             }
         }
     }
-    renderAllCards();
-}
-
-function renderAllCards() {
-    let numCards = parseInt(document.getElementById('count-input').value) || 1;
-    let phrase = document.getElementById('phrase-input').value.trim();
-    let cols = max(1, floor((windowWidth - padding * 2) / (cardWidth + padding)));
-    let rows = ceil(numCards / cols);
-    resizeCanvas(cols * (cardWidth + padding) + padding, rows * (cardHeight + padding) + padding);
-    background(43);
-
-    let currentCard = 1;
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if (currentCard > numCards) break;
-            let x = padding + c * (cardWidth + padding);
-            let y = padding + r * (cardHeight + padding);
-            let boardData = generateBingoCard(phrase, currentCard);
-            drawCard(x, y, boardData, currentCard, phrase);
-            currentCard++;
-        }
-    }
-}
-
-function drawCard(x, y, data, index, masterPhrase) {
-    push(); translate(x, y);
-    fill(255); stroke(0); strokeWeight(2); rect(0, 0, cardWidth, cardHeight, 10);
-    fill(200, 50, 50); rect(0, 0, cardWidth, 40, 10, 10, 0, 0);
-    fill(255); noStroke(); textAlign(CENTER, CENTER); textSize(24); textStyle(BOLD);
-    let letters = ['B', 'I', 'N', 'G', 'O'];
-    let colWidth = cardWidth / 5;
-    for(let i=0; i<5; i++) text(letters[i], i * colWidth + (colWidth/2), 20);
-    stroke(0); strokeWeight(1);
     
-    for (let col = 0; col < 5; col++) {
-        let colData = data[letters[col]];
-        for (let row = 0; row < 5; row++) {
-            let cellX = col * colWidth; let cellY = 40 + (row * ((cardHeight - 60) / 5)); let cellH = (cardHeight - 60) / 5;
-            let val = colData[row]; let cellKey = `${index}-${col}-${row}`;
-            
-            if (daubedSquares.has(cellKey) || val === "FREE") fill(255, 180, 180); 
-            else fill(255); 
-            
-            rect(cellX, cellY, colWidth, cellH);
-            fill(0);
-            if (val === "FREE") { textSize(12); textStyle(BOLD); } 
-            else { textSize(18); textStyle(NORMAL); }
-            text(val, cellX + (colWidth/2), cellY + (cellH/2));
-        }
-    }
-    fill(150); noStroke(); textSize(12); textStyle(NORMAL);
-    text(`Seed: ${masterPhrase}-${index}`, cardWidth/2, cardHeight - 10);
-    pop();
+    // Rebuild the UI to show the new daubs
+    buildUI(); 
 }
-
-function mousePressed() {
-    let numCards = parseInt(document.getElementById('count-input').value) || 1;
-    let cols = max(1, floor((windowWidth - padding * 2) / (cardWidth + padding)));
-    for (let i = 0; i < numCards; i++) {
-        let r = floor(i / cols); let c = i % cols;
-        let x = padding + c * (cardWidth + padding); let y = padding + r * (cardHeight + padding);
-        if (mouseX > x && mouseX < x + cardWidth && mouseY > y + 40 && mouseY < y + cardHeight - 20) {
-            let colWidth = cardWidth / 5; let cellH = (cardHeight - 60) / 5;
-            let col = floor((mouseX - x) / colWidth); let row = floor((mouseY - (y + 40)) / cellH);
-            if (col >= 0 && col < 5 && row >= 0 && row < 5) {
-                let cellKey = `${i + 1}-${col}-${row}`;
-                if (daubedSquares.has(cellKey)) daubedSquares.delete(cellKey);
-                else daubedSquares.add(cellKey);
-                renderAllCards(); return; 
-            }
-        }
-    }
-}
-
-function windowResized() { renderAllCards(); }
 </script>
 </body>
 </html>
